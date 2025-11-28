@@ -94,7 +94,11 @@ def get_dataset(opt):
         validation_metadata_path, sample_rate, number_of_samples, transform=transformation
     )
     validation_dataloader = create_data_loader(validation_dataset, batch_size=batch_size, shuffle=False)
-    return train_dataloader, validation_dataloader
+    dataloader = {
+    "train": train_dataloader,
+    "val": validation_dataloader
+}
+    return dataloader
 
 def create_parser():
     """Create the parser object.

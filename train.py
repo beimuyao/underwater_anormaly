@@ -32,10 +32,10 @@ def train():
     ##
     # LOAD DATA
     # dataloader = load_data(opt)
-    train_datalodar, val_datalodar = get_dataset(opt)
+    dataloader = get_dataset(opt)
     ##
     # LOAD MODEL
-    model = Ganomaly(opt, train_datalodar,val_datalodar)
+    model = Ganomaly(opt, dataloader)
     ##
     # TRAIN MODEL
     model.train()
