@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 
 from torch.utils.data import Dataset
+import torch.nn.functional as F
 
 
 class VTUAD(Dataset):
@@ -13,7 +14,7 @@ class VTUAD(Dataset):
     """
 
     def __init__(self, metadata_file, target_sample_rate,
-                 num_samples, transform=None, target_transform=None):
+                 num_samples, transform=None, target_transform=None, resize=False, isize=None):
         """Initialize the VTUAD class.
 
         Args:
@@ -29,6 +30,8 @@ class VTUAD(Dataset):
         self.target_transform = target_transform
         self.target_sample_rate = target_sample_rate
         self.num_samples = num_samples
+        self.rezise = resize
+        self.isize = isize
         self.class_mapping = {'tug':0, 'tanker':1, 'cargo':2, 'passengership':3, 'background':4}
 
     def __len__(self):
@@ -50,6 +53,7 @@ class VTUAD(Dataset):
         """
         audio_file = self.metadata.iloc[index]
         audio_sample_path = os.path.join(self.root_dir, audio_file.filename)
+        audio_sample_path = audio_sample_path.replace("\\", "/")
         label = self._get_audio_sample_label(index)
         if self.target_transform:
             label = self.target_transform(label)
@@ -59,14 +63,20 @@ class VTUAD(Dataset):
         #     frame_offset=self.metadata.sub_init.iloc[index]*self.metadata.sample_rate.iloc[index],
         #     num_frames=self.num_samples,
         # )
-        signal, sr = torchaudio.load(audio_sample_path, frame_offset=0, num_frames=-1)
-
+        # signal, sr = torchaudio.load(audio_sample_path, frame_offset=0, num_frames=-1)
+        signal, sr = torchaudio.load(audio_sample_path)
         signal = self._resample_to_target_sr(signal, sr)
         signal = self._mix_down_to_one_channel(signal)
         signal = self._cut_bigger_samples(signal)
         signal = self._right_pad_small_samples(signal)
         if self.transform:
             signal = self.transform(signal)
+        if self.rezise:
+            signal = signal.unsqueeze(0)  # -> [1,1,H,W]
+            spec = F.interpolate(signal, size=(self.isize,self.isize), mode="bilinear", align_corners=False)
+            signal = spec.squeeze(0)
+
+        
 
         return signal, label
 

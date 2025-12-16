@@ -13,13 +13,25 @@ def weights_init(mod):
     Custom weights initialization called on netG, netD and netE
     :param m:
     :return:
+    这段代码是 GAN 常用的 初始化权重函数，来自 DCGAN 论文
+    所有卷积层（Conv）权重用 均值 0、方差 0.02 的正态分布初始化
+    所有 BatchNorm 层权重用 均值 1、方差 0.02 的正态分布初始化
+    BatchNorm 的偏置置为 0
     """
     classname = mod.__class__.__name__
+    # 对所有卷积层（Conv, ConvTranspose）
     if classname.find('Conv') != -1:
-        mod.weight.data.normal_(0.0, 0.02)
+        if hasattr(mod, 'weight') and mod.weight is not None:
+            mod.weight.data.normal_(0.0, 0.02)
+        if hasattr(mod, 'bias') and mod.bias is not None:
+            mod.bias.data.fill_(0)
+
+    # 对 BatchNorm 层
     elif classname.find('BatchNorm') != -1:
-        mod.weight.data.normal_(1.0, 0.02)
-        mod.bias.data.fill_(0)
+        if hasattr(mod, 'weight') and mod.weight is not None:
+            mod.weight.data.normal_(1.0, 0.02)
+        if hasattr(mod, 'bias') and mod.bias is not None:
+            mod.bias.data.fill_(0)
 
 ###
 class Encoder(nn.Module):

@@ -19,6 +19,7 @@ from lib.networks import NetG, NetD, weights_init
 from lib.visualizer import Visualizer
 from lib.loss import l2_loss
 from lib.evaluate import evaluate
+from collections import defaultdict
 
 
 class BaseModel():
@@ -35,7 +36,7 @@ class BaseModel():
         self.dataloader = dataloader
         self.trn_dir = os.path.join(self.opt.outf, self.opt.name, 'train')
         self.tst_dir = os.path.join(self.opt.outf, self.opt.name, 'test')
-        self.device = torch.device("cuda:0" if self.opt.device != 'gpu' else "cpu")
+        self.device = torch.device("cuda:0" if self.opt.device == 'gpu' else "cpu")
 
     ##
     def set_input(self, input:torch.Tensor):
@@ -48,6 +49,7 @@ class BaseModel():
             self.input.resize_(input[0].size()).copy_(input[0]) #把 input[0] 的内容复制到 self.input 中，并自动调整 self.input 的尺寸以匹配它。
             self.gt.resize_(input[1].size()).copy_(input[1])
             self.label.resize_(input[1].size())
+
 
             # Copy the first batch as the fixed input.
             if self.total_steps == self.opt.batchsize:
@@ -126,6 +128,8 @@ class BaseModel():
 
         self.netg.train()
         epoch_iter = 0
+        epoch_errors = defaultdict(float)
+        num_batches = 0
         for data in tqdm(self.dataloader['train'], leave=False, total=len(self.dataloader['train'])):
             self.total_steps += self.opt.batchsize
             epoch_iter += self.opt.batchsize
@@ -136,6 +140,10 @@ class BaseModel():
 
             if self.total_steps % self.opt.print_freq == 0:
                 errors = self.get_errors()
+                for k, v in errors.items(): #epoch总loss
+                    epoch_errors[k] += v
+                num_batches += 1
+                # self.visualizer.print_current_errors(self.epoch, errors)
                 if self.opt.display:
                     counter_ratio = float(epoch_iter) / len(self.dataloader['train'].dataset)
                     self.visualizer.plot_current_errors(self.epoch, counter_ratio, errors)
@@ -146,8 +154,11 @@ class BaseModel():
                 if self.opt.display:
                     self.visualizer.display_current_images(reals, fakes, fixed)
 
+        for k in epoch_errors: #输出epoch平均loss
+            epoch_errors[k] /= num_batches
+        self.visualizer.print_current_errors(self.epoch, epoch_errors)
         print(">> Training model %s. Epoch %d/%d" % (self.name, self.epoch+1, self.opt.niter))
-        # self.visualizer.print_current_errors(self.epoch, errors)
+        
 
     ##
     def train(self):
@@ -328,6 +339,9 @@ class Ganomaly(BaseModel):
         """ Backpropagate through netD
         """
         # Real - Fake Loss
+        bs = self.pred_real.size(0)   # 当前 batch 实际大小
+        self.real_label = torch.ones(bs, device=self.pred_real.device)
+        self.fake_label = torch.zeros(bs, device=self.pred_real.device)
         self.err_d_real = self.l_bce(self.pred_real, self.real_label)
         self.err_d_fake = self.l_bce(self.pred_fake, self.fake_label)
 
