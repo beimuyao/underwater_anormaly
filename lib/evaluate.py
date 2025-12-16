@@ -43,8 +43,8 @@ def roc(labels, scores, saveto=None):
     scores = scores.cpu()
 
     # True/False Positive Rates.
-    fpr, tpr, _ = roc_curve(labels, scores)
-    roc_auc = auc(fpr, tpr)
+    fpr, tpr, _ = roc_curve(labels, scores) #假阳，真阳
+    roc_auc = auc(fpr, tpr) #AUC=P(异常样本得分>正常样本得分)
 
     # Equal Error Rate
     eer = brentq(lambda x: 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
@@ -67,5 +67,5 @@ def roc(labels, scores, saveto=None):
     return roc_auc
 
 def auprc(labels, scores):
-    ap = average_precision_score(labels.cpu(), scores.cpu())
+    ap = average_precision_score(labels.cpu(), scores.cpu()) #Precision–Recall 曲线下面积
     return ap

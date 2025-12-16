@@ -207,6 +207,7 @@ class BaseModel():
             self.opt.phase = 'test'
 
             # Create big error tensor for the test set.
+            #每个样本的异常分数，真实标签，潜在输入和输出
             self.an_scores = torch.zeros(size=(len(self.dataloader['test'].dataset),), dtype=torch.float32, device=self.device)
             self.gt_labels = torch.zeros(size=(len(self.dataloader['test'].dataset),), dtype=torch.long,    device=self.device)
             self.latent_i  = torch.zeros(size=(len(self.dataloader['test'].dataset), self.opt.nz), dtype=torch.float32, device=self.device)
@@ -216,22 +217,33 @@ class BaseModel():
             self.times = []
             self.total_steps = 0
             epoch_iter = 0
+            start_idx = 0
             for i, data in enumerate(self.dataloader['test'], 0):
                 self.total_steps += self.opt.batchsize
                 epoch_iter += self.opt.batchsize
                 time_i = time.time()
                 self.set_input(data)
                 self.fake, latent_i, latent_o = self.netg(self.input)
-
+                #计算输入潜在空间和输出潜在空间之间的差异,对差异进行平方，得到每个元素的平方误差
+                #对差异进行平方，得到每个元素的平方误差Anomaly Score,如果输入和生成的潜在空间之间差异较大，则模型认为该样本是 异常的。反之，则认为是 正常的。
                 error = torch.mean(torch.pow((latent_i-latent_o), 2), dim=1)
+
+                bsz = error.size(0)   # ⚠️ 实际 batch 大小
+                end_idx = start_idx + bsz
+
                 time_o = time.time()
 
-                self.an_scores[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = error.reshape(error.size(0))
-                self.gt_labels[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = self.gt.reshape(error.size(0))
-                self.latent_i [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_i.reshape(error.size(0), self.opt.nz)
-                self.latent_o [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_o.reshape(error.size(0), self.opt.nz)
+                # self.an_scores[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = error.reshape(error.size(0))
+                # self.gt_labels[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = self.gt.reshape(error.size(0))
+                # self.latent_i [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_i.reshape(error.size(0), self.opt.nz)
+                # self.latent_o [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_o.reshape(error.size(0), self.opt.nz)
+                self.an_scores[start_idx:end_idx] = error
+                self.gt_labels[start_idx:end_idx] = self.gt.view(-1)
+                self.latent_i[start_idx:end_idx, :] = latent_i
+                self.latent_o[start_idx:end_idx, :] = latent_o
 
                 self.times.append(time_o - time_i)
+                start_idx = end_idx
 
                 # Save test images.
                 if self.opt.save_test_images:
