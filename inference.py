@@ -1,3 +1,16 @@
+"""
+inference GANOMALY
+
+. Example: Run the following command from the terminal.
+    run inference.py                             \
+        --model ganomaly                        \
+        --dataset UCSD_Anomaly_Dataset/UCSDped1 \
+        --batchsize 32                          \
+        --isize 256                         \
+        --nz 512                                \
+        --ngf 64                               \
+        --ndf 64
+"""
 # from __future__ import print_function
 import numpy as np
 import os
@@ -8,22 +21,7 @@ from lib.networks import NetG
 from nauta.dataset import get_dataset
 
 
-#参数
-opt = Options().parse() 
-device = torch.device("cuda:0" if opt.device == 'gpu' else "cpu")
-# LOAD DATA
-dataloader = get_dataset(opt) 
-# LOAD MODEL
-netg = NetG(opt).to(device)
-
-if opt.load_weights:
-    checkpoint = torch.load(opt.model_path, map_location=device)
-    netg.load_state_dict(checkpoint['state_dict'])
-    print("Loaded trained weights from:", opt.model_path)
-
-netg.eval()
-
-def inference(dataloader, netG, threshold=None):
+def inference(dataloader, device, netG, threshold=None):
     anomaly_scores = []
     filenames = []
 
@@ -61,15 +59,32 @@ def inference(dataloader, netG, threshold=None):
 
     return results
 
-results = inference(dataloader, netg, threshold=opt.threshold)
+def main():
+    #参数
+    opt = Options().parse() 
+    device = torch.device("cuda:0" if opt.device == 'gpu' else "cpu")
+    # LOAD DATA
+    dataloader = get_dataset(opt) 
+    # LOAD MODEL
+    netg = NetG(opt).to(device)
 
+    if opt.load_weights:
+        checkpoint = torch.load(opt.model_path, map_location=device)
+        netg.load_state_dict(checkpoint['state_dict'])
+        print("Loaded trained weights from:", opt.model_path)
 
-csv_file = os.path.join(opt.outf, 'inference_results.csv')
-os.makedirs(opt.outf, exist_ok=True)
-with open(csv_file, 'w', newline='') as f:
-    writer = csv.DictWriter(f, fieldnames=['filename', 'score', 'label'])
-    writer.writeheader()
-    for row in results:
-        writer.writerow(row)
+    netg.eval()
+    results = inference(dataloader, device, netg, threshold=opt.threshold)
+    #保存结果
+    csv_file = os.path.join(opt.outf, 'inference_results.csv')
+    os.makedirs(opt.outf, exist_ok=True)
+    with open(csv_file, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['filename', 'score', 'label'])
+        writer.writeheader()
+        for row in results:
+            writer.writerow(row)
 
-print("Inference done. Results saved to", csv_file)
+    print("Inference done. Results saved to", csv_file)
+
+if __name__ == '__main__':
+    main()
