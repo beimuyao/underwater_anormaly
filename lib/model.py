@@ -37,6 +37,7 @@ class BaseModel():
         self.trn_dir = os.path.join(self.opt.outf, self.opt.name, 'train')
         self.tst_dir = os.path.join(self.opt.outf, self.opt.name, 'test')
         self.device = torch.device("cuda:0" if self.opt.device == 'gpu' else "cpu")
+        print(self.device)
 
     ##
     def set_input(self, input:torch.Tensor):
@@ -233,14 +234,14 @@ class BaseModel():
 
                 time_o = time.time()
 
-                # self.an_scores[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = error.reshape(error.size(0))
-                # self.gt_labels[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = self.gt.reshape(error.size(0))
-                # self.latent_i [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_i.reshape(error.size(0), self.opt.nz)
-                # self.latent_o [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_o.reshape(error.size(0), self.opt.nz)
-                self.an_scores[start_idx:end_idx] = error
-                self.gt_labels[start_idx:end_idx] = self.gt.view(-1)
-                self.latent_i[start_idx:end_idx, :] = latent_i
-                self.latent_o[start_idx:end_idx, :] = latent_o
+                self.an_scores[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = error.reshape(error.size(0))
+                self.gt_labels[i*self.opt.batchsize : i*self.opt.batchsize+error.size(0)] = self.gt.reshape(error.size(0))
+                self.latent_i [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_i.reshape(error.size(0), self.opt.nz)
+                self.latent_o [i*self.opt.batchsize : i*self.opt.batchsize+error.size(0), :] = latent_o.reshape(error.size(0), self.opt.nz)
+                # self.an_scores[start_idx:end_idx] = error
+                # self.gt_labels[start_idx:end_idx] = self.gt.view(-1)
+                # self.latent_i[start_idx:end_idx, :] = latent_i
+                # self.latent_o[start_idx:end_idx, :] = latent_o
 
                 self.times.append(time_o - time_i)
                 start_idx = end_idx

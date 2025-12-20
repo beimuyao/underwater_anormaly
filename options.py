@@ -28,7 +28,7 @@ class Options():
         # Base
         self.parser.add_argument('--dataset', default='ship_back', help='folder | cifar10 | mnist ')
         self.parser.add_argument('--dataroot', default='', help='path to dataset')
-        self.parser.add_argument('--batchsize', type=int, default=2, help='input batch size')
+        self.parser.add_argument('--batchsize', type=int, default=8, help='input batch size')
         self.parser.add_argument('--workers', type=int, help='number of data loading workers', default=8)
         self.parser.add_argument('--droplast', action='store_true', default=True, help='Drop last batch size.')
         self.parser.add_argument('--isize', type=int, default=128, help='input image size.')
@@ -54,9 +54,9 @@ class Options():
 
         ##
         # Dataset
-        self.parser.add_argument('--train_metadata', default='E:/Awork/data/shipsEar/train_back/train.csv')
-        self.parser.add_argument('--validation_metadata', default='E:/Awork/data/shipsEar/test/test.csv')
-        self.parser.add_argument('--test_metadata', default='E:/Awork/data/shipsEar/test/test.csv')
+        self.parser.add_argument('--train_metadata', default='H:/data/back_ship3500/train_list_1.csv')
+        self.parser.add_argument('--validation_metadata', default='H:/data/back_ship3500/test_list_1.csv')
+        self.parser.add_argument('--test_metadata', default='H:/data/back_ship3500/test_list_1.csv')
         self.parser.add_argument('--sample_rate', type=int, default=16000, help='Sample rate of the wav file')
         self.parser.add_argument('--number_of_samples', type=int, default=5, help='Number of samples to read')
         self.parser.add_argument('--preprocess', default='mel')
