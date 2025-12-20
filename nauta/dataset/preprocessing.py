@@ -21,7 +21,7 @@ def define_mel_spectrogram(sample_rate):
         torchaudio.transforms: The MelSpectrogram object initialized.
     """
     mel_spectrogram = Spectrogram.MelSpectrogram(
-        sr=sample_rate, n_fft=N_FFT, n_mels=128, hop_length=HOP_LENGTH,
+        sr=sample_rate, n_fft=2048, n_mels=128, hop_length=640,
         window='hann', center=True, pad_mode='reflect',
         power=2.0, htk=False, fmin=0, fmax=sample_rate/2, norm=1,
         trainable_mel=False, trainable_STFT=False, verbose=False
@@ -80,7 +80,25 @@ def resize_spec(spec, target_size=(128, 128)):
     spec = spec.unsqueeze(0)  # -> [1,1,H,W]
     spec = F.interpolate(spec, size=target_size, mode="bilinear", align_corners=False)
     return spec.squeeze(0)  # -> [1,256,256]
+def pad(mel, target_width=128):
+    if mel.dim() == 3:
+        # 单张 Mel: [C, F, T] -> 增加 batch 维度
+        mel = mel.unsqueeze(0)
+        squeeze = True
+    else:
+        squeeze = False
 
+    _, _, _, time_frames = mel.shape
+    pad_amount = target_width - time_frames
+    if pad_amount <= 0:
+        return mel[:, :, :, :target_width]  # 截断
+
+    # pad=(left, right, top, bottom)，这里在右侧 pad
+    mel_padded = F.pad(mel, (0, pad_amount, 0, 0), "constant", 0.0)
+
+    if squeeze:
+        mel_padded = mel_padded.squeeze(0)
+    return mel_padded
 # 假设 mel, lofar, demon 形状如下：
 # mel = [1, 95, 305]
 # lofar = [1, 512, 400]
@@ -90,7 +108,7 @@ def resize_spec(spec, target_size=(128, 128)):
 
 def main():
     # 1. 读入音频
-    wav_path = "E:/Awork/data/shipsEar/train_back/91_6.wav"   # 改成你的文件
+    wav_path = "E:/Awork/data/shipsEar/train/6_2.wav"   # 改成你的文件
     audio, sr = sf.read(wav_path)
 
     # 如果是双通道，取一个通道
@@ -105,8 +123,8 @@ def main():
 
     # 3. 计算 Mel 频谱图
     mel = mel_spec_func(audio_tensor)  # 输出形状: [1, n_mels, time]
-    mel_r   = resize_spec(mel)
-    mel = mel_r.squeeze(0).detach().numpy()   # 转成 numpy
+    mel   = pad(mel)
+    mel = mel.squeeze(0).detach().numpy()   # 转成 numpy
 
 
     # 4. 显示 Mel 图

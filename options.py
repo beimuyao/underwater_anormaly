@@ -61,7 +61,7 @@ class Options():
         self.parser.add_argument('--number_of_samples', type=int, default=5, help='Number of samples to read')
         self.parser.add_argument('--preprocess', default='mel')
         self.parser.add_argument('--resize', default='True',help='resize input to isize')
-
+        self.parser.add_argument('--padding', default='True',help='pad input to isize')
         ##
         # Train
         self.parser.add_argument('--print_freq', type=int, default=1, help='frequency of showing training results on console')
@@ -95,7 +95,7 @@ class Options():
                 self.opt.gpu_ids.append(id)
 
         # set gpu ids
-        if self.opt.device == 'cpu':
+        if self.opt.device != 'cpu':
             torch.cuda.set_device(self.opt.gpu_ids[0])
 
         args = vars(self.opt)

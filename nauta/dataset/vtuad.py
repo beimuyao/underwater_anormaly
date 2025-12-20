@@ -14,7 +14,7 @@ class VTUAD(Dataset):
     """
 
     def __init__(self, metadata_file, target_sample_rate,
-                 num_samples, transform=None, target_transform=None, resize=False, isize=None):
+                 num_samples, transform=None, target_transform=None, padding=False, isize=None):
         """Initialize the VTUAD class.
 
         Args:
@@ -30,7 +30,7 @@ class VTUAD(Dataset):
         self.target_transform = target_transform
         self.target_sample_rate = target_sample_rate
         self.num_samples = num_samples
-        self.rezise = resize
+        self.padding = padding
         self.isize = isize
         self.class_mapping = {'tug':0, 'tanker':1, 'cargo':2, 'passengership':3, 'background':4}
 
@@ -71,12 +71,22 @@ class VTUAD(Dataset):
         signal = self._right_pad_small_samples(signal)
         if self.transform:
             signal = self.transform(signal)
-        if self.rezise:
-            signal = signal.unsqueeze(0)  # -> [1,1,H,W]
-            spec = F.interpolate(signal, size=(self.isize,self.isize), mode="bilinear", align_corners=False)
-            signal = spec.squeeze(0)
+        if self.padding:
+            if signal.dim() == 3:
+                # 单张 Mel: [C, F, T] -> 增加 batch 维度
+                signal = signal.unsqueeze(0)
+                squeeze = True
+            else:
+                squeeze = False
 
-        
+            _, _, _, time_frames = signal.shape
+            pad_amount = self.isize - time_frames
+            if pad_amount <= 0:
+                return signal[:, :, :, :self.isize]  # 截断
+            # pad=(left, right, top, bottom)，这里在右侧 pad
+            signal = F.pad(signal, (0, pad_amount, 0, 0), "constant", 0.0)
+            if squeeze:
+                signal = signal.squeeze(0)
 
         return signal, label
 

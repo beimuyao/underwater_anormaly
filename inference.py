@@ -64,6 +64,10 @@ def main():
     opt = Options().parse() 
     device = torch.device("cuda:0" if opt.device == 'gpu' else "cpu")
     # LOAD DATA
+
+    ######dataloader有问题 返回的是train和test
+
+
     dataloader = get_dataset(opt) 
     # LOAD MODEL
     netg = NetG(opt).to(device)
@@ -74,7 +78,10 @@ def main():
         print("Loaded trained weights from:", opt.model_path)
 
     netg.eval()
+    
+    #推理
     results = inference(dataloader, device, netg, threshold=opt.threshold)
+
     #保存结果
     csv_file = os.path.join(opt.outf, 'inference_results.csv')
     os.makedirs(opt.outf, exist_ok=True)

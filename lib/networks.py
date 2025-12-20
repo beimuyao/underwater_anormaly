@@ -37,6 +37,8 @@ def weights_init(mod):
 class Encoder(nn.Module):
     """
     DCGAN ENCODER NETWORK
+    把一张 isize * isize 的输入，
+    通过逐层下采样和通道扩展，压缩成一个低维潜在向量 z(nz 维)。
     """
 
     def __init__(self, isize, nz, nc, ndf, ngpu, n_extra_layers=0, add_final_conv=True):

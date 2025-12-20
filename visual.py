@@ -6,7 +6,7 @@ from scipy.signal import welch
 # -----------------------------
 # 读取音频
 # -----------------------------
-audio_path = "E:/Awork/data/shipsEar/train/6_4.wav"
+audio_path = "E:/Awork/data/shipsEar/6__10_07_13_marDeCangas_Entra.wav"
 sr, data = wavfile.read(audio_path)
 
 # 若为双声道，取一个通道
