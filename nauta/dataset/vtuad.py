@@ -71,6 +71,7 @@ class VTUAD(Dataset):
         signal = self._right_pad_small_samples(signal)
         if self.transform:
             signal = self.transform(signal)
+            signal = torch.log(signal + 1e-6)
         if self.padding:
             if signal.dim() == 3:
                 # 单张 Mel: [C, F, T] -> 增加 batch 维度

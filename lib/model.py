@@ -131,6 +131,7 @@ class BaseModel():
         epoch_iter = 0
         epoch_errors = defaultdict(float)
         num_batches = 0
+        print(">> Training model %s. Epoch %d/%d" % (self.name, self.epoch, self.opt.niter))
         for data in tqdm(self.dataloader['train'], leave=False, total=len(self.dataloader['train'])):
             self.total_steps += self.opt.batchsize
             epoch_iter += self.opt.batchsize
@@ -158,7 +159,7 @@ class BaseModel():
         for k in epoch_errors: #输出epoch平均loss
             epoch_errors[k] /= num_batches
         self.visualizer.print_current_errors(self.epoch, epoch_errors)
-        print(">> Training model %s. Epoch %d/%d" % (self.name, self.epoch+1, self.opt.niter))
+        # print(">> Training model %s. Epoch %d/%d" % (self.name, self.epoch+1, self.opt.niter))
         
 
     ##

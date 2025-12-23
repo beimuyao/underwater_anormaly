@@ -9,6 +9,7 @@ Returns:
 import argparse
 import os
 import torch
+from datetime import datetime
 
 # pylint: disable=C0103,C0301,R0903,W0622
 
@@ -28,7 +29,7 @@ class Options():
         # Base
         self.parser.add_argument('--dataset', default='ship_back', help='folder | cifar10 | mnist ')
         self.parser.add_argument('--dataroot', default='', help='path to dataset')
-        self.parser.add_argument('--batchsize', type=int, default=8, help='input batch size')
+        self.parser.add_argument('--batchsize', type=int, default=32, help='input batch size')
         self.parser.add_argument('--workers', type=int, help='number of data loading workers', default=8)
         self.parser.add_argument('--droplast', action='store_true', default=True, help='Drop last batch size.')
         self.parser.add_argument('--isize', type=int, default=128, help='input image size.')
@@ -54,9 +55,9 @@ class Options():
 
         ##
         # Dataset
-        self.parser.add_argument('--train_metadata', default='H:/data/back_ship3500/train_list_1.csv')
-        self.parser.add_argument('--validation_metadata', default='H:/data/back_ship3500/test_list_1.csv')
-        self.parser.add_argument('--test_metadata', default='H:/data/back_ship3500/test_list_1.csv')
+        self.parser.add_argument('--train_metadata', default='H:/data/back/train_list_1.csv')
+        self.parser.add_argument('--validation_metadata', default='H:/data/back/test_list_1.csv')
+        self.parser.add_argument('--test_metadata', default='H:/data/back/test_list_1.csv')
         self.parser.add_argument('--sample_rate', type=int, default=16000, help='Sample rate of the wav file')
         self.parser.add_argument('--number_of_samples', type=int, default=5, help='Number of samples to read')
         self.parser.add_argument('--preprocess', default='mel')
@@ -71,7 +72,7 @@ class Options():
         self.parser.add_argument('--resume', default='', help="path to checkpoints (to continue training)")
         self.parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
         self.parser.add_argument('--iter', type=int, default=0, help='Start from iteration i')
-        self.parser.add_argument('--niter', type=int, default=15, help='number of epochs to train for')
+        self.parser.add_argument('--niter', type=int, default=250, help='number of epochs to train for')
         self.parser.add_argument('--beta1', type=float, default=0.5, help='momentum term of adam')
         self.parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate for adam')
         self.parser.add_argument('--w_adv', type=float, default=1, help='Adversarial loss weight')
@@ -107,7 +108,9 @@ class Options():
 
         # save to the disk
         if self.opt.name == 'experiment_name':
-            self.opt.name = "%s/%s" % (self.opt.model, self.opt.dataset)
+            time_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.opt.name = f"{time_str}_{self.opt.model}_{self.opt.dataset}/"
+            # self.opt.name = "%s/%s/%s/" % (self.opt.model, self.opt.dataset,time_str)
         expr_dir = os.path.join(self.opt.outf, self.opt.name, 'train')
         test_dir = os.path.join(self.opt.outf, self.opt.name, 'test')
 

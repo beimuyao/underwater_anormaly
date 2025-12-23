@@ -1,9 +1,10 @@
-from nnAudio import Spectrogram
+from nnAudio.features import MelSpectrogram, Gammatonegram, CQT
 import torch
 import matplotlib.pyplot as plt
 import soundfile as sf
 import numpy as np
 import torch.nn.functional as F
+import torchaudio
 
 FREQ_BINS = 95 # This number was based on the CQT, which have 95 freq bins for 4186hz
 HOP_LENGTH = 256 # Used to generate an output of 128 on x axis
@@ -20,7 +21,7 @@ def define_mel_spectrogram(sample_rate):
     Returns:
         torchaudio.transforms: The MelSpectrogram object initialized.
     """
-    mel_spectrogram = Spectrogram.MelSpectrogram(
+    mel_spectrogram = MelSpectrogram(
         sr=sample_rate, n_fft=2048, n_mels=128, hop_length=640,
         window='hann', center=True, pad_mode='reflect',
         power=2.0, htk=False, fmin=0, fmax=sample_rate/2, norm=1,
@@ -38,7 +39,7 @@ def define_gamma_spectrogram(sample_rate):
     Returns:
         Spectrogram: The Gammatonegram object initialized.
     """
-    gamma_spectrogram = Spectrogram.Gammatonegram(
+    gamma_spectrogram = Gammatonegram(
         sr=sample_rate, n_fft=N_FFT, n_bins=FREQ_BINS, hop_length=HOP_LENGTH,
         window='hann', center=True, pad_mode='reflect',
         power=2.0, htk=False, fmin=FMIN, fmax=FMAX, norm=1,
@@ -56,7 +57,7 @@ def define_cqt_spectrogram(sample_rate):
     Returns:
         Spectrogram: The CQT object initialized.
     """
-    cqt_spectrogram = Spectrogram.CQT(
+    cqt_spectrogram = CQT(
         sr=sample_rate, hop_length=HOP_LENGTH, fmin=FMIN, fmax=FMAX,
         n_bins=FREQ_BINS, bins_per_octave=12, filter_scale=1, norm=1,
         window='hann', center=True, pad_mode='reflect', trainable=False,
@@ -108,7 +109,7 @@ def pad(mel, target_width=128):
 
 def main():
     # 1. 读入音频
-    wav_path = "E:/Awork/data/shipsEar/train/6_2.wav"   # 改成你的文件
+    wav_path = "H:/data/back/DATA0135_36.wav"   # 改成你的文件
     audio, sr = sf.read(wav_path)
 
     # 如果是双通道，取一个通道
@@ -123,18 +124,23 @@ def main():
 
     # 3. 计算 Mel 频谱图
     mel = mel_spec_func(audio_tensor)  # 输出形状: [1, n_mels, time]
+    # log_mel = torchaudio.transforms.AmplitudeToDB()(mel)
     mel   = pad(mel)
+    log_mel = torch.log(mel + 1e-6)
+    spec = log_mel[0].cpu().numpy()    
     mel = mel.squeeze(0).detach().numpy()   # 转成 numpy
 
 
     # 4. 显示 Mel 图
     plt.figure(figsize=(10, 6))
-    plt.imshow(10 * np.log10(mel + 1e-6), aspect='auto', origin='lower')
+    plt.imshow(spec, aspect='auto', origin='lower')
     plt.colorbar(label="dB")
     plt.title("Mel Spectrogram")
     plt.xlabel("Time Frames")
     plt.ylabel("Mel Bins")
     plt.show()
+    # plt.savefig("H:/data/81_2.png", dpi=300)
+    # plt.close()
 
 if __name__ == "__main__":
     main()
