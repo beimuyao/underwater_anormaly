@@ -71,7 +71,7 @@ class VTUAD(Dataset):
         signal = self._right_pad_small_samples(signal)
         if self.transform:
             signal = self.transform(signal)
-            signal = torch.log(signal + 1e-6)
+            signal = 10 * torch.log(signal + 1e-6)
         if self.padding:
             if signal.dim() == 3:
                 # 单张 Mel: [C, F, T] -> 增加 batch 维度
@@ -89,7 +89,7 @@ class VTUAD(Dataset):
             if squeeze:
                 signal = signal.squeeze(0)
 
-        return signal, label
+        return signal, label, audio_file.filename
 
     def _right_pad_small_samples(self, signal):
         """Insert a pad at the right side of the data

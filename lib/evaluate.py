@@ -16,6 +16,7 @@ from scipy.optimize import brentq
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 from matplotlib import rc
+
 rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
 rc('text', usetex=True)
 
@@ -43,8 +44,11 @@ def roc(labels, scores, saveto=None):
     scores = scores.cpu()
 
     # True/False Positive Rates.
-    fpr, tpr, _ = roc_curve(labels, scores) #假阳，真阳
+    fpr, tpr, thresholds = roc_curve(labels, scores) #假阳，真阳
     roc_auc = auc(fpr, tpr) #AUC=P(异常样本得分>正常样本得分)
+    youden_index = tpr - fpr
+    best_idx = youden_index.argmax()
+    best_threshold = thresholds[best_idx]
 
     # Equal Error Rate
     eer = brentq(lambda x: 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
@@ -61,10 +65,10 @@ def roc(labels, scores, saveto=None):
         plt.ylabel('True Positive Rate')
         plt.title('Receiver operating characteristic')
         plt.legend(loc="lower right")
-        plt.savefig(os.path.join(saveto, "ROC.pdf"))
+        plt.savefig(os.path.join(saveto, "ROC.png"))
         plt.close()
 
-    return roc_auc
+    return roc_auc, best_threshold
 
 def auprc(labels, scores):
     ap = average_precision_score(labels.cpu(), scores.cpu()) #Precision–Recall 曲线下面积

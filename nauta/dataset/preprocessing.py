@@ -109,7 +109,7 @@ def pad(mel, target_width=128):
 
 def main():
     # 1. 读入音频
-    wav_path = "H:/data/back/DATA0135_36.wav"   # 改成你的文件
+    wav_path = "H:/data/qiandao22/noise_target数据集/target/20220624102345_S_SpeedBoat_N_S_1_label__0__9.wav"   # 改成你的文件
     audio, sr = sf.read(wav_path)
 
     # 如果是双通道，取一个通道
@@ -125,15 +125,13 @@ def main():
     # 3. 计算 Mel 频谱图
     mel = mel_spec_func(audio_tensor)  # 输出形状: [1, n_mels, time]
     # log_mel = torchaudio.transforms.AmplitudeToDB()(mel)
-    mel   = pad(mel)
-    log_mel = torch.log(mel + 1e-6)
-    spec = log_mel[0].cpu().numpy()    
+    # mel   = pad(mel)
     mel = mel.squeeze(0).detach().numpy()   # 转成 numpy
 
 
     # 4. 显示 Mel 图
     plt.figure(figsize=(10, 6))
-    plt.imshow(spec, aspect='auto', origin='lower')
+    plt.imshow(10 * np.log10(mel + 1e-6), aspect='auto', origin='lower')
     plt.colorbar(label="dB")
     plt.title("Mel Spectrogram")
     plt.xlabel("Time Frames")

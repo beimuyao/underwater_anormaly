@@ -146,7 +146,88 @@ class Decoder(nn.Module):
         else:
             output = self.main(input)
         return output
+class Encoder1(nn.Module):
+    """
+    DCGAN ENCODER NETWORK
+    把一张 isize * isize 的输入，
+    通过逐层下采样和通道扩展，压缩成一个低维潜在向量 z(nz 维)。
+    Input:  B * 1 * n_mels * n_frames
+    Output: B * nz * 1 * 1
+    """
 
+    def __init__(self, isize, nz, nc, ndf, ngpu, max_channel, n_extra_layers=0, add_final_conv=True):
+        super(Encoder1, self).__init__()
+        self.ngpu = ngpu
+        # assert isize % 16 == 0, "isize has to be a multiple of 16"
+
+        main = nn.Sequential()
+        # input is nc x isize x isize
+        main.add_module('initial-conv-{0}-{1}'.format(nc, ndf),
+                        nn.Conv2d(nc, ndf, 3, 1, 1, bias=False))
+        main.add_module('initial-relu-{0}'.format(ndf),
+                        nn.LeakyReLU(0.2, inplace=True))
+        cndf = ndf
+        fsize = isize
+        tsize = isize
+
+        # Extra layers
+        for t in range(n_extra_layers):
+            main.add_module('extra-layers-{0}-{1}-conv'.format(t, cndf),
+                            nn.Conv2d(cndf, cndf, 3, 1, 1, bias=False))
+            main.add_module('extra-layers-{0}-{1}-batchnorm'.format(t, cndf),
+                            nn.BatchNorm2d(cndf))
+            main.add_module('extra-layers-{0}-{1}-relu'.format(t, cndf),
+                            nn.LeakyReLU(0.2, inplace=True))
+
+        # 只压缩时间轴
+        main.add_module(
+            'time_down-{0}-{1}-conv'.format(cndf, cndf *2),
+            nn.Conv2d(cndf, cndf*2, (3,4), (1,2), 1, bias = False))
+        main.add_module('time_down-{0}-batchnorm'.format(cndf*2),
+                            nn.BatchNorm2d(cndf*2))
+        main.add_module('time_down-{0}-relu'.format( cndf*2),
+                            nn.LeakyReLU(0.2, inplace=True))
+        cndf = cndf * 2
+        tsize = tsize /2
+        i=1
+        #时间频率一起下采样
+        while fsize > 4 and tsize > 4:
+            in_feat = cndf
+            out_feat = min(cndf*2,max_channel)
+
+            main.add_module(
+            'pyramid-{0}-{1}-conv-{2}'.format(in_feat, out_feat, i),
+            nn.Conv2d(in_feat, out_feat, 4, 2, 1, bias = False))
+            main.add_module('pyramid-{0}-{1}-batchnorm'.format(out_feat,i),
+                            nn.BatchNorm2d(out_feat))
+            main.add_module('pyramid-{0}-{1}-relu'.format( out_feat,i),
+                            nn.LeakyReLU(0.2, inplace=True))
+            cndf = out_feat
+            fsize = fsize / 2
+            tsize = tsize / 2
+            i+=1
+        # state size. K x 4 x 4
+        main.add_module(
+            'f_down-{0}-{1}-conv'.format(cndf, cndf *2),
+            nn.Conv2d(out_feat, out_feat, (4,3), (2,1), 1, bias = False))
+        main.add_module('f_down-{0}-batchnorm'.format(out_feat),
+                            nn.BatchNorm2d(out_feat))
+        main.add_module('f_down-{0}-relu'.format( out_feat),
+                            nn.LeakyReLU(0.2, inplace=True))
+        if add_final_conv:
+            main.add_module('final-{0}-{1}-conv'.format(cndf, 1),
+                            nn.Conv2d(cndf, nz, 4, 1, 0, bias=False))
+
+        self.main = main
+
+    def forward(self, input):
+        if self.ngpu > 1:
+            output = nn.parallel.data_parallel(self.main, input, range(self.ngpu))
+        else:
+            output = self.main(input)
+
+        return output
+    
 
 ##
 class NetD(nn.Module):
@@ -156,7 +237,7 @@ class NetD(nn.Module):
 
     def __init__(self, opt):
         super(NetD, self).__init__()
-        model = Encoder(opt.isize, 1, opt.nc, opt.ngf, opt.ngpu, opt.extralayers)
+        model = Encoder1(opt.isize, 1, opt.nc, opt.ngf, opt.ngpu, opt.max_channel,opt.extralayers)
         layers = list(model.main.children())
 
         self.features = nn.Sequential(*layers[:-1])
@@ -179,9 +260,9 @@ class NetG(nn.Module):
 
     def __init__(self, opt):
         super(NetG, self).__init__()
-        self.encoder1 = Encoder(opt.isize, opt.nz, opt.nc, opt.ngf, opt.ngpu, opt.extralayers)
+        self.encoder1 = Encoder1(opt.isize, opt.nz, opt.nc, opt.ngf, opt.ngpu,opt.max_channel,opt.extralayers)
         self.decoder = Decoder(opt.isize, opt.nz, opt.nc, opt.ngf, opt.ngpu, opt.extralayers)
-        self.encoder2 = Encoder(opt.isize, opt.nz, opt.nc, opt.ngf, opt.ngpu, opt.extralayers)
+        self.encoder2 = Encoder1(opt.isize, opt.nz, opt.nc, opt.ngf, opt.ngpu, opt.max_channel,opt.extralayers)
 
     def forward(self, x):
         latent_i = self.encoder1(x)

@@ -197,8 +197,8 @@ class BaseModel():
         with torch.no_grad():
             # Load the weights of netg and netd.
             if self.opt.load_weights:
-                path = "./output/{}/{}/train/weights/netG.pth".format(self.name.lower(), self.opt.dataset)
-                pretrained_dict = torch.load(path)['state_dict']
+                # path = "./output/{}/{}/train/weights/netG.pth".format(self.name.lower(), self.opt.dataset)
+                pretrained_dict = torch.load(self.opt.model_path)['state_dict']
 
                 try:
                     self.netg.load_state_dict(pretrained_dict)
@@ -253,9 +253,9 @@ class BaseModel():
                     if not os.path.isdir(dst):
                         os.makedirs(dst)
                     real, fake, _ = self.get_current_images()
-                    vutils.save_image(real, '%s/real_%03d.eps' % (dst, i+1), normalize=True)
-                    vutils.save_image(fake, '%s/fake_%03d.eps' % (dst, i+1), normalize=True)
-
+                    vutils.save_image(real, '%s/real_%03d.png' % (dst, i+1), normalize=True)
+                    vutils.save_image(fake, '%s/fake_%03d.png' % (dst, i+1), normalize=True)
+            # print(self.an_scores)
             # Measure inference time.
             self.times = np.array(self.times)
             self.times = np.mean(self.times[:100] * 1000)
@@ -263,7 +263,7 @@ class BaseModel():
             # Scale error vector between [0, 1]
             self.an_scores = (self.an_scores - torch.min(self.an_scores)) / (torch.max(self.an_scores) - torch.min(self.an_scores))
             # auc, eer = roc(self.gt_labels, self.an_scores)
-            auc = evaluate(self.gt_labels, self.an_scores, metric=self.opt.metric)
+            auc = evaluate(self.gt_labels, self.an_scores ,metric=self.opt.metric)
             performance = OrderedDict([('Avg Run Time (ms/batch)', self.times), (self.opt.metric, auc)])
 
             if self.opt.display_id > 0 and self.opt.phase == 'test':
@@ -278,7 +278,7 @@ class Ganomaly(BaseModel):
 
     @property
     def name(self): return 'Ganomaly'
-
+ 
     def __init__(self, opt, dataloader):
         super(Ganomaly, self).__init__(opt, dataloader)
 
@@ -320,8 +320,10 @@ class Ganomaly(BaseModel):
         if self.opt.isTrain:
             self.netg.train()
             self.netd.train()
-            self.optimizer_d = optim.Adam(self.netd.parameters(), lr=self.opt.lr, betas=(self.opt.beta1, 0.999))
-            self.optimizer_g = optim.Adam(self.netg.parameters(), lr=self.opt.lr, betas=(self.opt.beta1, 0.999))
+            # self.optimizer_d = optim.Adam(self.netd.parameters(), lr=self.opt.lr, betas=(self.opt.beta1, 0.999))
+            # self.optimizer_g = optim.Adam(self.netg.parameters(), lr=self.opt.lr, betas=(self.opt.beta1, 0.999))
+            self.optimizer_d = optim.RMSprop(self.netd.parameters(), lr=self.opt.lr)
+            self.optimizer_g = optim.RMSprop(self.netg.parameters(), lr=self.opt.lr)
 
     ##
     def forward_g(self):
@@ -356,11 +358,12 @@ class Ganomaly(BaseModel):
         bs = self.pred_real.size(0)   # 当前 batch 实际大小
         self.real_label = torch.ones(bs, device=self.pred_real.device)
         self.fake_label = torch.zeros(bs, device=self.pred_real.device)
-        self.err_d_real = self.l_bce(self.pred_real, self.real_label)
-        self.err_d_fake = self.l_bce(self.pred_fake, self.fake_label)
+        # self.err_d_real = self.l_bce(self.pred_real, self.real_label)
+        # self.err_d_fake = self.l_bce(self.pred_fake, self.fake_label)
 
-        # NetD Loss & Backward-Pass
-        self.err_d = (self.err_d_real + self.err_d_fake) * 0.5
+        # # NetD Loss & Backward-Pass
+        # self.err_d = (self.err_d_real + self.err_d_fake) * 0.5
+        self.err_d = -(torch.mean(self.pred_real)-torch.mean(self.pred_fake))
         self.err_d.backward()
 
     ##
@@ -386,5 +389,9 @@ class Ganomaly(BaseModel):
         # netd
         self.optimizer_d.zero_grad()
         self.backward_d()
+        ###WGAN 裁剪
+        # clip D weights between -0.01, 0.01  权重剪裁
+        for p in self.netd.parameters():
+            p.data.clamp_(-0.01, 0.01)
         self.optimizer_d.step()
         if self.err_d.item() < 1e-5: self.reinit_d()
