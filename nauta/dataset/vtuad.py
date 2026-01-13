@@ -7,6 +7,7 @@ import numpy as np
 
 from torch.utils.data import Dataset
 import torch.nn.functional as F
+from nauta.dataset import spec_augment_pytorch
 
 
 class VTUAD(Dataset):
@@ -14,7 +15,7 @@ class VTUAD(Dataset):
     """
 
     def __init__(self, metadata_file, target_sample_rate,
-                 num_samples, transform=None, target_transform=None, padding=False, isize=None):
+                 num_samples, transform=None, target_transform=None, padding=False, isize=None,agu=False):
         """Initialize the VTUAD class.
 
         Args:
@@ -32,6 +33,7 @@ class VTUAD(Dataset):
         self.num_samples = num_samples
         self.padding = padding
         self.isize = isize
+        self.agu = agu
         self.class_mapping = {'tug':0, 'tanker':1, 'cargo':2, 'passengership':3, 'background':4}
 
     def __len__(self):
@@ -72,24 +74,18 @@ class VTUAD(Dataset):
         if self.transform:
             signal = self.transform(signal)
             signal = 10 * torch.log(signal + 1e-6)
+        if self.agu:
+            signal = spec_augment_pytorch.spec_augment(mel_spectrogram=signal,time_warping_para=0)
         if self.padding:
-            if signal.dim() == 3:
-                # 单张 Mel: [C, F, T] -> 增加 batch 维度
-                signal = signal.unsqueeze(0)
-                squeeze = True
-            else:
-                squeeze = False
+            signal = F.pad(signal, (0,2), mode='replicate')
+        # delta1 = signal_pad[:, :, 1:] - signal_pad[:, :, :-1]   # [1,128,127]
+        # delta1 = F.pad(delta1, (0,1),mode='replicate')                   # [1,128,128]
 
-            _, _, _, time_frames = signal.shape
-            pad_amount = self.isize - time_frames
-            if pad_amount <= 0:
-                return signal[:, :, :, :self.isize]  # 截断
-            # pad=(left, right, top, bottom)，这里在右侧 pad
-            signal = F.pad(signal, (0, pad_amount, 0, 0), "constant", 0.0)
-            if squeeze:
-                signal = signal.squeeze(0)
-
+        # delta2 = delta1[:, :, 1:] - delta1[:, :, :-1]  # [1,128,127]
+        # delta2 = F.pad(delta2, (0,1),mode='replicate')                   # [1,128,128]
+        # signal = torch.cat([signal, delta1, delta2], dim=0)
         return signal, label, audio_file.filename
+
 
     def _right_pad_small_samples(self, signal):
         """Insert a pad at the right side of the data

@@ -38,8 +38,8 @@ def train():
     model = Ganomaly(opt, dataloader)
     ##
     # TRAIN MODEL
-    # model.train()
-    model.test()
+    model.train()
+    # model.test()
 
 if __name__ == '__main__':
     train()

@@ -5,6 +5,8 @@ import soundfile as sf
 import numpy as np
 import torch.nn.functional as F
 import torchaudio
+# import spec_augment_pytorch
+import librosa
 
 FREQ_BINS = 95 # This number was based on the CQT, which have 95 freq bins for 4186hz
 HOP_LENGTH = 256 # Used to generate an output of 128 on x axis
@@ -24,7 +26,7 @@ def define_mel_spectrogram(sample_rate):
     mel_spectrogram = MelSpectrogram(
         sr=sample_rate, n_fft=2048, n_mels=128, hop_length=640,
         window='hann', center=True, pad_mode='reflect',
-        power=2.0, htk=False, fmin=0, fmax=sample_rate/2, norm=1,
+        power=2.0, htk=False, fmin=0, fmax=2000, norm=1,
         trainable_mel=False, trainable_STFT=False, verbose=False
     )
     return mel_spectrogram
@@ -109,8 +111,12 @@ def pad(mel, target_width=128):
 
 def main():
     # 1. 读入音频
-    wav_path = "H:/data/qiandao22/noise_target数据集/target/20220624102345_S_SpeedBoat_N_S_1_label__0__9.wav"   # 改成你的文件
+    wav_path = "H:/data/test/15_18.wav"   # 改成你的文件
     audio, sr = sf.read(wav_path)
+
+    # 如果是双通道，取一个通道
+    if audio.ndim > 1:
+        audio = audio[:, 0]
 
     # 如果是双通道，取一个通道
     if audio.ndim > 1:
@@ -119,26 +125,53 @@ def main():
     # 转成 Tensor (是给 torchaudio / torchlibrosa 用的)
     audio_tensor = torch.tensor(audio, dtype=torch.float32).unsqueeze(0)  # [1, T]
 
-    # 2. 获取 mel 对象
-    mel_spec_func = define_mel_spectrogram(sr)
 
-    # 3. 计算 Mel 频谱图
-    mel = mel_spec_func(audio_tensor)  # 输出形状: [1, n_mels, time]
-    # log_mel = torchaudio.transforms.AmplitudeToDB()(mel)
-    # mel   = pad(mel)
-    mel = mel.squeeze(0).detach().numpy()   # 转成 numpy
+    mel_pro = define_mel_spectrogram(sr)
+    mel = mel_pro(audio_tensor)
+    mel_pad = F.pad(mel, (0,2), mode='replicate')
+    # mel_db = librosa.power_to_db(mel)
+    # delta1 = librosa.feature.delta(mel_db, order=1)
+    # delta2 = librosa.feature.delta(mel_db, order=2)
+    # X = np.stack([mel_db, delta1, delta2], axis=0)
+    
+    mel_db = 10 * torch.log(mel_pad + 1e-6)
+    # spec_augment_pytorch.visualization_spectrogram(mel_spectrogram=mel_db,
+    #                                                   title="Raw Mel Spectrogram")
+    # warped_masked_spectrogram = spec_augment_pytorch.spec_augment(mel_spectrogram=mel_db,time_warping_para=0)
+    # spec_augment_pytorch.visualization_spectrogram(mel_spectrogram=warped_masked_spectrogram,
+    #                                                   title="pytorch Warped & Masked Mel Spectrogram")
+    # delta1 = mel_db[:, :, 1:] - mel_db[:, :, :-1]   # [1,128,127]
+    # delta1 = F.pad(delta1, (0,1),mode='replicate')                   # [1,128,128]
 
+    # delta2 = delta1[:, :, 1:] - delta1[:, :, :-1]  # [1,128,127]
+    # delta2 = F.pad(delta2, (0,1),mode='replicate')                   # [1,128,128]
+    # X = torch.cat([mel_db, delta1, delta2], dim=0)
+    # print(X.shape)
+
+
+    mel = mel_db.squeeze(0).detach().numpy()   # 转成 numpy
+    # warped=warped_masked_spectrogram.squeeze(0).detach().numpy()
+    mel_freqs = librosa.mel_frequencies(
+        n_mels=128,
+        fmin=0,
+        fmax=2000
+    )   
 
     # 4. 显示 Mel 图
     plt.figure(figsize=(10, 6))
-    plt.imshow(10 * np.log10(mel + 1e-6), aspect='auto', origin='lower')
-    plt.colorbar(label="dB")
-    plt.title("Mel Spectrogram")
-    plt.xlabel("Time Frames")
-    plt.ylabel("Mel Bins")
+    plt.imshow(mel, aspect='auto', origin='lower')
+    idx = np.linspace(0, 128-1, 6, dtype=int)
+    plt.yticks(
+        idx,
+        [f"{int(mel_freqs[i])}" for i in idx]
+    )
+
+    plt.ylabel("Frequency (Hz)")
+    plt.xlabel("Time frame")
+    plt.colorbar(label="Log-Mel Energy")
+    plt.title("Log-Mel Spectrogram (nnAudio)")
     plt.show()
-    # plt.savefig("H:/data/81_2.png", dpi=300)
-    # plt.close()
+    
 
 if __name__ == "__main__":
     main()

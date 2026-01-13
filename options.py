@@ -64,6 +64,7 @@ class Options():
         self.parser.add_argument('--preprocess', default='mel')
         self.parser.add_argument('--resize', default='True',help='resize input to isize')
         self.parser.add_argument('--padding', default='True',help='pad input to isize')
+        self.parser.add_argument('--agu', default='False',help='data agument')
         ##
         # Train
         self.parser.add_argument('--print_freq', type=int, default=1, help='frequency of showing training results on console')
@@ -71,7 +72,7 @@ class Options():
         self.parser.add_argument('--save_test_images', action='store_true', help='Save test images for demo.')
         self.parser.add_argument('--load_weights', action='store_true', help='Load the pretrained weights')
         self.parser.add_argument('--resume', default='', help="path to checkpoints (to continue training)")
-        self.parser.add_argument('--model_path', default='H:/target/underwater_anormaly/output/20251230_235830_ganomaly_ship_back/train/weights/netG.pth', help="path to inference")
+        self.parser.add_argument('--model_path', default='H:/target/underwater_anormaly/output/20260105_190636_ganomaly_ship_back/train/weights/netG.pth', help="path to inference")
         self.parser.add_argument('--phase', type=str, default='train', help='train, val, test, etc')
         self.parser.add_argument('--iter', type=int, default=0, help='Start from iteration i')
         self.parser.add_argument('--niter', type=int, default=250, help='number of epochs to train for')

@@ -68,7 +68,8 @@ def roc(labels, scores, saveto=None):
         plt.savefig(os.path.join(saveto, "ROC.png"))
         plt.close()
 
-    return roc_auc, best_threshold
+    # return roc_auc, best_threshold
+    return roc_auc
 
 def auprc(labels, scores):
     ap = average_precision_score(labels.cpu(), scores.cpu()) #Precision–Recall 曲线下面积

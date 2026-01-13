@@ -71,7 +71,7 @@ def inference(dataloader, gt, device, netG, threshold=None):
     if threshold is None:
         score_list = anomaly_scores.squeeze().tolist()
         best_roc, threshold = roc( gt,score_list)
-        print("Auto threshold set to:", threshold)
+        print("Auto threshold set to:", threshold,best_roc)
         
 
     # 判定正常 / 异常

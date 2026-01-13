@@ -85,15 +85,16 @@ def get_dataset(opt):
     transformation = get_preprocessing_layer(pre_processing_type, sample_rate)
     padding = opt.padding
     isize =  opt.isize
+    agu=opt.agu
 
     # Get the training, validation and test dataloaders.
     train_dataset = VTUAD(
-        train_metadata_path, sample_rate, number_of_samples, transform=transformation, padding=padding, isize=isize
+        train_metadata_path, sample_rate, number_of_samples, transform=transformation, padding=padding, isize=isize,agu=agu
     )
     train_dataloader = create_data_loader(train_dataset, batch_size=batch_size)
 
     validation_dataset = VTUAD(
-        validation_metadata_path, sample_rate, number_of_samples, transform=transformation, padding=padding, isize=isize
+        validation_metadata_path, sample_rate, number_of_samples, transform=transformation, padding=padding, isize=isize,agu=agu
     )
     validation_dataloader = create_data_loader(validation_dataset, batch_size=batch_size, shuffle=False)
     dataloader = {
